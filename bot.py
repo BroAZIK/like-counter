@@ -1,36 +1,34 @@
-from telegram.ext import Updater, CommandHandler, CallbackContext, MessageHandler, Filters
-from telegram import Update
+from telegram.ext import Dispatcher, Updater, CommandHandler, CallbackContext, MessageHandler, Filters
+from telegram import Update, Bot
 import os
 import time
+from flask import Flask, request
+from handlers import start, like_or_dislike, echo
 
-TOKEN = os.environ.get('TOKEN')
+
+TOKEN = '6056954180:AAEZsYsWmUuJaUkXGbEu-2RqDVgB3yPSq94'
+bot = Bot(token=TOKEN)
+
 
 like = 0
 dislike = 0
 
-def start(update: Update, context: CallbackContext):
-    chat_id = update.message.chat.id
-    text = 'salom xush kelipsiz'
+app = Flask(__name__)
 
-    context.bot.sendMessage(chat_id, text)
+@app.route('/', methods=['GET','POST'])
+def hello_world():
+    if request.method == 'GET':
+        return "Webhook is working"
+    elif request.method == 'POST':
+        dp = Dispatcher(bot, None, workers=0)
 
-def like_or_dislike(update: Update, context: CallbackContext):
-    global like
-    global dislike
+        update = Update.de_json(request.get_json(force=True), bot)
 
-    if update.message.text == '👍': like += 1
-    if update.message.text == '👎': dislike += 1
+        dp.add_handler(CommandHandler('start', start))
+        dp.add_handler(handlewr=MessageHandler(filters=Filters.text(['👍', '👎'], callback=like_or_dislike)))
 
-    chat_id = update.message.chat.id
+        dp.add_handler(MessageHandler(Filters.text, echo))
 
-    context.bot.sendMessage(chat_id, f'likes: {like}\ndislikes: {dislike}')
+        dp.process_update(update)
 
-
-updater = Updater(token=TOKEN)
-dp = updater.dispatcher
-
-dp.add_handler(handler=CommandHandler(command='start', callback=start))
-dp.add_handler(handler=MessageHandler(filters=Filters.text(['👍', '👎']), callback=like_or_dislike))
-
-updater.start_polling()
-updater.idle()
+        return 'Got a POST request!'
